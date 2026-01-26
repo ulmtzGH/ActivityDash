@@ -1,0 +1,5 @@
+{
+  "name": "Panel de Actividad de Usuario",
+  "description": "Un panel administrativo para registrar y analizar actividades realizadas por los usuarios, con gestión de usuarios, seguimiento de actividades, métricas y clasificaciones.",
+  "requestFramePermissions": []
+}

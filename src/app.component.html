@@ -1,0 +1,109 @@
+
+@if (isLoggedIn()) {
+  <div class="flex h-screen bg-gray-100 dark:bg-gray-900 text-gray-800 dark:text-gray-200">
+    <!-- Sidebar (Desktop Only) -->
+    <aside 
+      class="hidden md:block w-64 px-4 py-8 overflow-y-auto bg-white border-r dark:bg-gray-800 dark:border-gray-700">
+      
+      <a routerLink="/dashboard" class="text-2xl font-bold text-primary-600 dark:text-primary-400">
+        ActivityDash
+      </a>
+
+      <nav class="mt-8">
+        <h3 class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Principal</h3>
+        <div class="mt-4 -mx-2" role="navigation">
+          <a routerLink="/dashboard" routerLinkActive="bg-primary-600 text-white" [routerLinkActiveOptions]="{exact: true}" class="flex justify-between items-center px-2 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md">
+            Panel Principal
+          </a>
+          @if (isAdmin()) {
+            <a routerLink="/users" routerLinkActive="bg-primary-600 text-white" class="flex justify-between items-center px-2 py-2 mt-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md">
+              Usuarios
+            </a>
+            <a routerLink="/activities" routerLinkActive="bg-primary-600 text-white" class="flex justify-between items-center px-2 py-2 mt-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md">
+              Actividades
+            </a>
+          }
+           <a routerLink="/activity-log" routerLinkActive="bg-primary-600 text-white" class="flex justify-between items-center px-2 py-2 mt-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md">
+            Registro de Actividad
+          </a>
+        </div>
+         <h3 class="mt-8 text-xs font-semibold text-gray-500 uppercase tracking-wider">Análisis</h3>
+         <div class="mt-4 -mx-2" role="navigation">
+            <a routerLink="/leaderboard" routerLinkActive="bg-primary-600 text-white" class="flex justify-between items-center px-2 py-2 mt-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md">
+              Clasificación
+            </a>
+         </div>
+      </nav>
+    </aside>
+
+    <!-- Main content -->
+    <div class="flex-1 flex flex-col overflow-hidden">
+      <!-- Header -->
+      <header class="flex items-center justify-between px-6 py-4 bg-white border-b dark:bg-gray-800 dark:border-gray-700">
+        <div class="flex items-center">
+          <h2 class="text-xl font-semibold">{{ currentView() }}</h2>
+        </div>
+
+        <div class="flex items-center space-x-4">
+          <!-- User Name -->
+          <span class="hidden sm:inline font-medium text-gray-700 dark:text-gray-300">{{ currentUserName() }}</span>
+          
+          <!-- User avatar -->
+          <div class="relative">
+            <button class="relative block h-8 w-8 rounded-full overflow-hidden shadow focus:outline-none">
+              <img class="h-full w-full object-cover" src="https://picsum.photos/100" alt="Tu avatar">
+            </button>
+          </div>
+
+           <!-- Logout Button -->
+          <button (click)="logout()" class="flex items-center text-sm text-gray-500 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+            <svg class="h-5 w-5 sm:mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+            </svg>
+            <span class="hidden sm:inline">Cerrar Sesión</span>
+          </button>
+        </div>
+      </header>
+
+      <!-- Page content -->
+      <main class="flex-1 overflow-x-hidden overflow-y-auto bg-gray-100 dark:bg-gray-900 p-6 pb-20 md:pb-6">
+        <div class="container mx-auto">
+          <router-outlet></router-outlet>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Bottom Navigation (Mobile Only) -->
+  @if (isLoggedIn()) {
+    <nav class="md:hidden fixed bottom-0 inset-x-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 flex justify-around z-40">
+      <a routerLink="/dashboard" routerLinkActive="text-primary-600 dark:text-primary-400" [routerLinkActiveOptions]="{exact: true}" class="flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>
+        <span class="mt-1">Panel</span>
+      </a>
+      
+      @if (isAdmin()) {
+        <a routerLink="/users" routerLinkActive="text-primary-600 dark:text-primary-400" class="flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+          <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-4.67c.12-.24.232-.483.338-.724m-3.449-4.242A3.375 3.375 0 1110.875 12a3.375 3.375 0 012.68-5.493" /></svg>
+          <span class="mt-1">Usuarios</span>
+        </a>
+        <a routerLink="/activities" routerLinkActive="text-primary-600 dark:text-primary-400" class="flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+          <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12z" /></svg>
+          <span class="mt-1">Actividades</span>
+        </a>
+      } @else {
+        <a routerLink="/activity-log" routerLinkActive="text-primary-600 dark:text-primary-400" class="flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+          <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12h3.75M9 15h3.75M9 18h3.75m3 .75H18a2.25 2.25 0 002.25-2.25V6.108c0-1.135-.845-2.098-1.976-2.192a48.424 48.424 0 00-1.123-.08m-5.801 0c-.065.21-.1.433-.1.664 0 .414.336.75.75.75h4.5a.75.75 0 00.75-.75 2.25 2.25 0 00-.1-.664m-5.8 0A2.251 2.251 0 0113.5 2.25H15c1.012 0 1.867.668 2.15 1.586m-5.8 0c-.376.023-.75.05-1.124.08C9.095 4.01 8.25 4.973 8.25 6.108V8.25m0 0H4.875c-.621 0-1.125.504-1.125 1.125v11.25c0 .621.504 1.125 1.125 1.125h9.75c.621 0 1.125-.504 1.125-1.125V9.375c0-.621-.504-1.125-1.125-1.125H8.25zM6.75 12h.008v.008H6.75V12z" /></svg>
+          <span class="mt-1">Registro</span>
+        </a>
+      }
+      
+      <a routerLink="/leaderboard" routerLinkActive="text-primary-600 dark:text-primary-400" class="flex flex-col items-center justify-center w-full pt-2 pb-1 text-xs text-gray-500 dark:text-gray-400 hover:text-primary-600 dark:hover:text-primary-400 transition-colors">
+        <svg class="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 18.75h-9a9.75 9.75 0 100-13.5h9a9.75 9.75 0 100 13.5zM16.5 9.75L9 12l7.5 2.25" /></svg>
+        <span class="mt-1">Ranking</span>
+      </a>
+    </nav>
+  }
+} @else {
+  <router-outlet></router-outlet>
+}

@@ -1,0 +1,225 @@
+
+<!-- Header: Add Log Button -->
+<div class="flex justify-end mb-6">
+  <button 
+    (click)="openAddLogModal()" 
+    class="px-5 py-2 bg-primary-600 text-white font-semibold rounded-md hover:bg-primary-700 transition-colors">
+    Añadir Registro
+  </button>
+</div>
+
+<!-- Logs Container -->
+<div class="bg-white dark:bg-gray-800 p-6 rounded-lg shadow-md">
+  <h3 class="text-xl font-semibold mb-4">Registro de Actividad</h3>
+
+  <!-- Mobile Card View -->
+  <div class="md:hidden space-y-4">
+    @for (log of filteredActivityLogs(); track log.id) {
+      <div class="border rounded-lg p-4 dark:border-gray-700" [class.bg-blue-50]="editingLog()?.id === log.id" [class.dark:bg-gray-700/50]="editingLog()?.id === log.id">
+        @if (editingLog()?.id === log.id) {
+          <!-- Mobile Edit View -->
+          <form [formGroup]="editLogForm" (ngSubmit)="saveEdit()" class="space-y-3">
+            <div>
+              <label class="text-xs font-medium text-gray-500">Usuario</label>
+              <select formControlName="userId" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm">
+                @for(user of dataService.users(); track user.id) {
+                  <option [value]="user.id">{{ user.name }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500">Actividad</label>
+              <select formControlName="activityId" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm">
+                @for(activity of dataService.activities(); track activity.id) {
+                  <option [value]="activity.id">{{ activity.name }}</option>
+                }
+              </select>
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500">Fecha</label>
+              <input type="date" formControlName="date" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm">
+            </div>
+            <div>
+              <label class="text-xs font-medium text-gray-500">Descripción</label>
+              <textarea formControlName="description" rows="3" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm" placeholder="Añade un detalle... (opcional)"></textarea>
+            </div>
+            <div class="flex justify-end space-x-2 mt-4">
+              <button type="button" (click)="cancelEdit()" class="px-3 py-1 rounded-md bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500 text-sm">
+                Cancelar
+              </button>
+              <button type="submit" [disabled]="editLogForm.invalid" class="px-3 py-1 rounded-md bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400 text-sm">
+                Guardar
+              </button>
+            </div>
+          </form>
+        } @else {
+          <!-- Mobile Display View -->
+          <div class="flex justify-between items-start mb-2">
+            <div>
+              <p class="font-semibold text-gray-900 dark:text-white">{{ getUserName(log.userId) }}</p>
+              <p class="text-sm text-gray-500 dark:text-gray-400">{{ getActivityName(log.activityId) }}</p>
+            </div>
+            <p class="text-xs text-gray-400 dark:text-gray-500 flex-shrink-0 ml-2">{{ log.date }}</p>
+          </div>
+          
+          @if (log.description) {
+            <p class="text-sm text-gray-600 dark:text-gray-300 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md mt-2">{{ log.description }}</p>
+          } @else {
+            <p class="text-sm italic text-gray-400 dark:text-gray-500 bg-gray-50 dark:bg-gray-700/50 p-3 rounded-md mt-2">Sin descripción</p>
+          }
+          
+          @if (isAdmin()) {
+            <div class="flex justify-end space-x-3 mt-3">
+              <button (click)="startEdit(log)" [disabled]="editingLog() !== null" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed text-sm font-medium">
+                Editar
+              </button>
+              <button (click)="requestDeleteLog(log)" [disabled]="editingLog() !== null" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 disabled:text-gray-400 disabled:cursor-not-allowed text-sm font-medium">
+                Eliminar
+              </button>
+            </div>
+          }
+        }
+      </div>
+    } @empty {
+      <p class="py-4 text-center text-gray-500 dark:text-gray-400">No se encontraron registros de actividad.</p>
+    }
+  </div>
+
+  <!-- Desktop Table View -->
+  <div class="hidden md:block overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+      <thead class="bg-gray-50 dark:bg-gray-700">
+        <tr>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Fecha</th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Usuario</th>
+          <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Actividad</th>
+          <th scope="col" class="w-1/3 px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Descripción</th>
+          @if (isAdmin()) {
+            <th scope="col" class="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">Acciones</th>
+          }
+        </tr>
+      </thead>
+      <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+        @for (log of filteredActivityLogs(); track log.id) {
+          @if (editingLog()?.id === log.id) {
+            <!-- Edit Mode Row -->
+            <tr class="bg-blue-50 dark:bg-gray-700/50" [formGroup]="editLogForm">
+              <td class="px-6 py-4"><input type="date" formControlName="date" class="w-full px-2 py-1 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm"></td>
+              <td class="px-6 py-4">
+                <select formControlName="userId" class="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm">
+                  @for(user of dataService.users(); track user.id) {
+                    <option [value]="user.id">{{ user.name }}</option>
+                  }
+                </select>
+              </td>
+              <td class="px-6 py-4">
+                <select formControlName="activityId" class="w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm">
+                  @for(activity of dataService.activities(); track activity.id) {
+                    <option [value]="activity.id">{{ activity.name }}</option>
+                  }
+                </select>
+              </td>
+              <td class="px-6 py-4"><textarea formControlName="description" rows="2" class="w-full px-2 py-1 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-sm" placeholder="Opcional..."></textarea></td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                <button (click)="saveEdit()" [disabled]="editLogForm.invalid" class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-600 disabled:text-gray-400">Guardar</button>
+                <button (click)="cancelEdit()" class="text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-600">Cancelar</button>
+              </td>
+            </tr>
+          } @else {
+            <!-- Display Mode Row -->
+            <tr>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ log.date }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-white">{{ getUserName(log.userId) }}</td>
+              <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-300">{{ getActivityName(log.activityId) }}</td>
+              <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-300">
+                @if (log.description) {
+                  {{ log.description }}
+                } @else {
+                  <span class="text-gray-400 dark:text-gray-500 italic">Sin descripción</span>
+                }
+              </td>
+              @if (isAdmin()) {
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                  <button (click)="startEdit(log)" [disabled]="editingLog() !== null" class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-600 disabled:text-gray-400 disabled:cursor-not-allowed">Editar</button>
+                  <button (click)="requestDeleteLog(log)" [disabled]="editingLog() !== null" class="text-red-600 hover:text-red-900 dark:text-red-400 dark:hover:text-red-600 disabled:text-gray-400 disabled:cursor-not-allowed">Eliminar</button>
+                </td>
+              }
+            </tr>
+          }
+        } @empty {
+          <tr>
+            <td [attr.colspan]="isAdmin() ? 5 : 4" class="px-6 py-4 text-center text-gray-500">No se encontraron registros de actividad.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </div>
+</div>
+
+
+<!-- Add Log Modal -->
+@if (showAddLogModal()) {
+  <div class="fixed inset-0 bg-black bg-opacity-60 z-40 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md">
+      <form [formGroup]="addLogForm" (ngSubmit)="onAddSubmit()">
+        <h3 class="text-lg font-bold mb-4">Añadir Registro de Actividad</h3>
+        <div class="space-y-4">
+          <div>
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Usuario</label>
+            @if (isAdmin()) {
+              <select formControlName="userId" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500">
+                <option [ngValue]="null" disabled>Selecciona un usuario</option>
+                @for(user of dataService.activeUsers(); track user.id) {
+                  <option [ngValue]="user.id">{{ user.name }}</option>
+                }
+              </select>
+            } @else {
+               <input 
+                type="text" 
+                [value]="authService.currentUser()?.name" 
+                disabled
+                class="mt-1 w-full p-2 border rounded-md dark:bg-gray-600 dark:border-gray-500 text-gray-400 cursor-not-allowed">
+            }
+          </div>
+           <div>
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Actividad</label>
+            <select formControlName="activityId" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500">
+              <option [ngValue]="null" disabled>Selecciona una actividad</option>
+               @for(activity of dataService.activities(); track activity.id) {
+                <option [ngValue]="activity.id">{{ activity.name }}</option>
+              }
+            </select>
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Fecha</label>
+            <input type="date" formControlName="date" class="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500">
+          </div>
+          <div>
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">Descripción (opcional)</label>
+            <textarea formControlName="description" rows="3" placeholder="Añade un detalle de la actividad realizada..." class="mt-1 w-full p-2 border rounded-md dark:bg-gray-700 dark:border-gray-600 focus:outline-none focus:ring-2 focus:ring-primary-500"></textarea>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end space-x-4">
+          <button type="button" (click)="closeAddLogModal()" class="px-4 py-2 rounded-md bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">Cancelar</button>
+          <button type="submit" [disabled]="addLogForm.invalid" class="px-4 py-2 rounded-md bg-primary-600 text-white hover:bg-primary-700 disabled:bg-gray-400">Guardar Registro</button>
+        </div>
+      </form>
+    </div>
+  </div>
+}
+
+<!-- Delete Confirmation Modal -->
+@if (logToDelete()) {
+  <div class="fixed inset-0 bg-black bg-opacity-60 z-50 flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-xl p-6 w-full max-w-md m-4">
+      <h3 class="text-lg font-bold">Confirmar Eliminación</h3>
+      <p class="mt-2 text-sm text-gray-600 dark:text-gray-300">
+        ¿Estás seguro de que quieres eliminar este registro? Esta acción no se puede deshacer.
+      </p>
+      <div class="mt-6 flex justify-end space-x-4">
+        <button (click)="cancelDelete()" class="px-4 py-2 rounded-md bg-gray-200 dark:bg-gray-600 hover:bg-gray-300 dark:hover:bg-gray-500">Cancelar</button>
+        <button (click)="confirmDelete()" class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700">Eliminar</button>
+      </div>
+    </div>
+  </div>
+}
