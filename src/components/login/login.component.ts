@@ -72,14 +72,14 @@ export class LoginComponent {
 
   errorMessage = signal<string | null>(null);
 
-  onSubmit() {
+  async onSubmit() {
     this.errorMessage.set(null);
     if (this.loginForm.invalid) {
       return;
     }
-    
+
     const { email, password } = this.loginForm.getRawValue();
-    const success = this.authService.login(email, password);
+    const success = await this.authService.login(email, password);
 
     if (!success) {
       this.errorMessage.set('Correo electrónico o contraseña incorrectos.');

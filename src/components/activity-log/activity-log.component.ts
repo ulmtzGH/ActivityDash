@@ -20,19 +20,19 @@ export class ActivityLogComponent {
 
   // Forms for adding and editing logs
   addLogForm = new FormGroup({
-    userId: new FormControl<number | null>(null, { validators: Validators.required }),
+    userId: new FormControl<string | null>(null, { validators: Validators.required }),
     activityId: new FormControl<number | null>(null, { validators: Validators.required }),
     date: new FormControl(this.getTodayDateString(), { validators: Validators.required, nonNullable: true }),
     description: new FormControl('', { nonNullable: true }),
   });
 
   editLogForm = new FormGroup({
-    userId: new FormControl<number | null>(null, { validators: Validators.required }),
+    userId: new FormControl<string | null>(null, { validators: Validators.required }),
     activityId: new FormControl<number | null>(null, { validators: Validators.required }),
     date: new FormControl('', { validators: Validators.required, nonNullable: true }),
     description: new FormControl('', { nonNullable: true }),
   });
-  
+
   // State signals
   showAddLogModal = signal(false);
   editingLog = signal<ActivityLog | null>(null);
@@ -42,16 +42,16 @@ export class ActivityLogComponent {
   filteredActivityLogs = computed(() => {
     const logs = this.dataService.activityLogs();
     const currentUser = this.authService.currentUser();
-    
+
     if (currentUser?.role === 'Admin') {
       return logs;
     }
-    
+
     return logs.filter(log => log.userId === currentUser?.id);
   });
 
   // --- Helper Methods ---
-  getUserName(userId: number): string {
+  getUserName(userId: string): string {
     return this.dataService.getUserById(userId)?.name || 'Usuario Desconocido';
   }
 
@@ -127,7 +127,7 @@ export class ActivityLogComponent {
         ...log,
         ...this.editLogForm.getRawValue(),
         // Ensure userId and activityId are numbers
-        userId: Number(this.editLogForm.value.userId),
+        userId: String(this.editLogForm.value.userId),
         activityId: Number(this.editLogForm.value.activityId),
       };
       this.dataService.updateActivityLog(updatedLog);
@@ -143,7 +143,7 @@ export class ActivityLogComponent {
   cancelDelete() {
     this.logToDelete.set(null);
   }
-  
+
   confirmDelete() {
     const log = this.logToDelete();
     if (log) {

@@ -3,40 +3,16 @@ import { Injectable, signal, computed } from '@angular/core';
 import { User } from '../models/user.model';
 import { Activity } from '../models/activity.model';
 import { ActivityLog } from '../models/activity-log.model';
+import { supabase } from '../app/supabase.client';
 
 @Injectable({
   providedIn: 'root',
 })
 export class DataService {
-  // Mock data
-  private initialUsers: User[] = [
-    { id: 1, name: 'Alicia Johnson', email: 'alicia@example.com', password: 'aliciajohnson', role: 'Admin', isActive: true },
-    { id: 2, name: 'Roberto Williams', email: 'roberto@example.com', password: 'robertowilliams', role: 'Colaborador', isActive: true },
-    { id: 3, name: 'Carlos Brown', email: 'carlos@example.com', password: 'carlosbrown', role: 'Colaborador', isActive: false },
-    { id: 4, name: 'Diana Prince', email: 'diana@example.com', password: 'dianaprince', role: 'Colaborador', isActive: true },
-  ];
-
-  private initialActivities: Activity[] = [
-    { id: 1, name: 'Commits de Código', description: 'Número de commits enviados al repositorio.' },
-    { id: 2, name: 'Tareas Completadas', description: 'Número de tareas marcadas como completadas.' },
-    { id: 3, name: 'Tickets de Soporte Resueltos', description: 'Número de tickets de soporte al cliente resueltos.' },
-  ];
-
-  private initialActivityLogs: ActivityLog[] = [
-    { id: 1, userId: 1, activityId: 1, date: '2023-10-26', description: 'Refactorización del módulo de autenticación.' },
-    { id: 2, userId: 2, activityId: 1, date: '2023-10-26', description: 'Añadidos tests unitarios para el servicio de usuarios.' },
-    { id: 3, userId: 1, activityId: 2, date: '2023-10-26', description: 'Completada la tarea de diseño de la nueva interfaz.' },
-    { id: 4, userId: 3, activityId: 2, date: '2023-10-27', description: 'Finalizada la implementación del endpoint de perfil.' },
-    { id: 5, userId: 2, activityId: 3, date: '2023-10-27' },
-    { id: 6, userId: 4, activityId: 1, date: '2023-10-28', description: 'Optimización de consultas a la base de datos.' },
-    { id: 7, userId: 1, activityId: 1, date: '2023-10-28' },
-    { id: 8, userId: 3, activityId: 3, date: '2023-10-28', description: 'Asistencia en la resolución de un bug crítico de producción.' },
-  ];
-
   // Signals for reactive data management
-  users = signal<User[]>(this.initialUsers);
-  activities = signal<Activity[]>(this.initialActivities);
-  activityLogs = signal<ActivityLog[]>(this.initialActivityLogs);
+  users = signal<User[]>([]);
+  activities = signal<Activity[]>([]);
+  activityLogs = signal<ActivityLog[]>([]);
 
   // Computed signals for derived data
   totalUsers = computed(() => this.users().length);
@@ -44,91 +20,241 @@ export class DataService {
   totalActivities = computed(() => this.activities().length);
   totalLogs = computed(() => this.activityLogs().length);
 
-  constructor() {}
+  constructor() {
+    this.loadData();
+  }
+
+  async loadData() {
+    this.loadUsers();
+    this.loadActivities();
+    this.loadActivityLogs();
+  }
+
+  async loadUsers() {
+    const { data, error } = await supabase
+      .from('profiles')
+      .select('*');
+    if (data) {
+      this.users.set(data.map(p => ({
+        id: p.id,
+        name: p.name,
+        email: p.email,
+        role: p.role as 'Admin' | 'Colaborador',
+        isActive: p.is_active,
+        password: '' // Not available
+      })));
+    } else if (error) {
+      console.error('Error loading users:', error);
+    }
+  }
+
+  async loadActivities() {
+    const { data, error } = await supabase
+      .from('activities')
+      .select('*')
+      .order('id', { ascending: true });
+    if (data) {
+      this.activities.set(data);
+    } else if (error) {
+      console.error('Error loading activities:', error);
+    }
+  }
+
+  async loadActivityLogs() {
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select(`
+        *,
+        profiles:user_id (name)
+      `)
+      .order('date', { ascending: false });
+
+    if (data) {
+      this.activityLogs.set(data.map(log => ({
+        id: log.id,
+        userId: log.user_id,
+        activityId: log.activity_id,
+        date: log.date,
+        description: log.description
+      })));
+    } else if (error) {
+      console.error('Error loading logs:', error);
+    }
+  }
 
   // User Management
+  // Note: Creating a user generally requires Auth.signUp which is in AuthService.
+  // This method might be used for admin creating users, or just updating local state after a register event if we event-bus it.
+  // For now, we'll assume addUser updates the signal optimistically or re-fetches.
+  // Actually, AuthService handles registration. We might just re-fetch users in AuthService or here.
+  // Let's expose simple state updaters or just rely on loadData everywhere.
+
+  // Since the original app had synchronous `addUser` that updated the list, 
+  // and we moved `register` to AuthService, `addUser` here acts as a "refresh" or manual insert if we had an admin panel for it.
+  // The original `addUser` added to the list and generated an ID.
+  // We'll keep `addUser` but implementation will use Supabase if we support "Invite User" flow (which needs edge functions or SMTP).
+  // For 'Colaborador' creation, it's safer to just refresh the list or allow updating keys.
+  // Let's stick to `updateUser` and `deleteUser` which operate on existing profiles.
+
+  // Users are created via Auth. We can't easily "insert" into profiles without an auth user unless we use admin key (we have anon).
+  // So `addUser` is effectively "Refresh Users" or no-op provided registration happens elsewhere.
+  // I'll leave it as a no-op or a refresh trigger for now.
   addUser(userData: { name: string; email: string; password?: string }) {
-    this.users.update(users => [
-      ...users,
-      {
-        name: userData.name,
-        email: userData.email,
-        id: Math.max(...users.map(u => u.id), 0) + 1,
-        role: 'Colaborador',
-        isActive: true,
-        password: userData.password || userData.name.toLowerCase().replace(/\s/g, ''),
-      },
-    ]);
+    // Intentionally empty or calls loadUsers. 
+    // Real user creation happens in AuthService.register().
+    this.loadUsers();
   }
 
-  updateUser(updatedUser: User) {
-    this.users.update(users =>
-      users.map(user => (user.id === updatedUser.id ? updatedUser : user))
-    );
+  async updateUser(updatedUser: User) {
+    const { error } = await supabase
+      .from('profiles')
+      .update({
+        name: updatedUser.name,
+        role: updatedUser.role,
+        is_active: updatedUser.isActive
+      })
+      .eq('id', updatedUser.id);
+
+    if (!error) {
+      this.users.update(users =>
+        users.map(user => (user.id === updatedUser.id ? updatedUser : user))
+      );
+    } else {
+      console.error('Error updating user:', error);
+    }
   }
 
-  deleteUser(userId: number) {
-    // Remove user
-    this.users.update(users => users.filter(user => user.id !== userId));
-    // Remove associated activity logs
-    this.activityLogs.update(logs => logs.filter(log => log.userId !== userId));
+  async deleteUser(userId: string) {
+    // We can't delete from auth.users easily with anon key, but we can delete from profiles if RLS allows.
+    // My RLS says: "Users can update own profile" but nothing about deleting others.
+    // Admins usually need delete permissions. I didn't add specific Admin RLS yet, just "Public profiles...".
+    // I'll try to delete from `profiles`. If cascading to auth.users is needed, it's server-side.
+    // If I delete profile, they might still be in auth but have no profile data.
+
+    // For now, let's just try delete from profiles.
+    const { error } = await supabase
+      .from('profiles')
+      .delete()
+      .eq('id', userId);
+
+    if (!error) {
+      this.users.update(users => users.filter(user => user.id !== userId));
+      this.activityLogs.update(logs => logs.filter(log => log.userId !== userId));
+    } else {
+      console.error('Error deleting user (profile):', error);
+    }
   }
 
   // Activity Management
-  addActivity(activity: Omit<Activity, 'id'>) {
-    this.activities.update(activities => [
-      ...activities,
-      { ...activity, id: Math.max(...activities.map(a => a.id), 0) + 1 },
-    ]);
+  async addActivity(activity: Omit<Activity, 'id'>) {
+    const { data, error } = await supabase
+      .from('activities')
+      .insert({ ...activity })
+      .select()
+      .single();
+
+    if (data) {
+      this.activities.update(activities => [...activities, data]);
+    } else {
+      console.error('Error adding activity:', error);
+    }
   }
 
-  updateActivity(updatedActivity: Activity) {
-    this.activities.update(activities =>
-      activities.map(activity => (activity.id === updatedActivity.id ? updatedActivity : activity))
-    );
+  async updateActivity(updatedActivity: Activity) {
+    const { error } = await supabase
+      .from('activities')
+      .update({ name: updatedActivity.name, description: updatedActivity.description })
+      .eq('id', updatedActivity.id);
+
+    if (!error) {
+      this.activities.update(activities =>
+        activities.map(activity => (activity.id === updatedActivity.id ? updatedActivity : activity))
+      );
+    } else {
+      console.error('Error updating activity:', error);
+    }
   }
 
-  deleteActivity(activityId: number) {
-    // Remove activity
-    this.activities.update(activities => activities.filter(activity => activity.id !== activityId));
-    // Remove associated activity logs
-    this.activityLogs.update(logs => logs.filter(log => log.activityId !== activityId));
+  async deleteActivity(activityId: number) {
+    const { error } = await supabase
+      .from('activities')
+      .delete()
+      .eq('id', activityId);
+
+    if (!error) {
+      this.activities.update(activities => activities.filter(activity => activity.id !== activityId));
+      this.activityLogs.update(logs => logs.filter(log => log.activityId !== activityId));
+    } else {
+      console.error('Error deleting activity:', error);
+    }
   }
-  
+
   // Activity Log Management
-  addActivityLog(log: Omit<ActivityLog, 'id'>) {
-    const newLog: ActivityLog = { 
-      ...log, 
-      id: Math.max(...this.activityLogs().map(l => l.id), 0) + 1 
+  async addActivityLog(log: Omit<ActivityLog, 'id'>) {
+    const payload = {
+      user_id: log.userId,
+      activity_id: log.activityId,
+      date: log.date,
+      description: log.description || null
     };
-    
-    // Ensure empty string is stored as undefined
-    if (newLog.description === '') {
-      delete newLog.description;
-    }
 
-    this.activityLogs.update(logs => [
-      ...logs,
-      newLog,
-    ]);
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .insert(payload)
+      .select()
+      .single();
+
+    if (data) {
+      const newLog: ActivityLog = {
+        id: data.id,
+        userId: data.user_id,
+        activityId: data.activity_id,
+        date: data.date,
+        description: data.description
+      };
+      this.activityLogs.update(logs => [...logs, newLog]);
+    } else {
+      console.error('Error adding log:', error);
+    }
   }
 
-  updateActivityLog(updatedLog: ActivityLog) {
-     // Ensure empty string is stored as undefined
-    if (updatedLog.description === '') {
-      delete updatedLog.description;
+  async updateActivityLog(updatedLog: ActivityLog) {
+    const payload = {
+      user_id: updatedLog.userId,
+      activity_id: updatedLog.activityId,
+      date: updatedLog.date,
+      description: updatedLog.description || null
+    };
+
+    const { error } = await supabase
+      .from('activity_logs')
+      .update(payload)
+      .eq('id', updatedLog.id);
+
+    if (!error) {
+      this.activityLogs.update(logs =>
+        logs.map(log => (log.id === updatedLog.id ? updatedLog : log))
+      );
+    } else {
+      console.error('Error updating log:', error);
     }
-    this.activityLogs.update(logs =>
-      logs.map(log => (log.id === updatedLog.id ? updatedLog : log))
-    );
   }
 
-  deleteActivityLog(logId: number) {
-    this.activityLogs.update(logs => logs.filter(log => log.id !== logId));
+  async deleteActivityLog(logId: number) {
+    const { error } = await supabase
+      .from('activity_logs')
+      .delete()
+      .eq('id', logId);
+
+    if (!error) {
+      this.activityLogs.update(logs => logs.filter(log => log.id !== logId));
+    } else {
+      console.error('Error deleting log:', error);
+    }
   }
 
   // --- Helpers ---
-  getUserById(id: number): User | undefined {
+  getUserById(id: string): User | undefined {
     return this.users().find(user => user.id === id);
   }
 

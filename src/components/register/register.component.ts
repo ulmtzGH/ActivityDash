@@ -100,16 +100,16 @@ export class RegisterComponent {
 
   errorMessage = signal<string | null>(null);
 
-  onSubmit() {
+  async onSubmit() {
     this.errorMessage.set(null);
     if (this.registerForm.invalid) {
       // Mark all fields as touched to display validation messages
       this.registerForm.markAllAsTouched();
       return;
     }
-    
+
     const { name, email, password } = this.registerForm.getRawValue();
-    const result = this.authService.register(name, email, password);
+    const result = await this.authService.register(name, email, password);
 
     if (!result.success) {
       this.errorMessage.set(result.message || 'Ocurrió un error durante el registro.');

@@ -104,8 +104,8 @@ export class LeaderboardComponent {
     const logs = filterId === null
       ? allLogs
       : allLogs.filter(log => log.activityId === filterId);
-    
-    const scores = new Map<number, number>();
+
+    const scores = new Map<string, number>();
 
     // Count the number of logs for each user
     for (const log of logs) {

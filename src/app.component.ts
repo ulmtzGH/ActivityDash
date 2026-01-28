@@ -12,11 +12,12 @@ import { AuthService } from './services/auth.service';
 })
 export class AppComponent {
   currentView = signal('Panel Principal');
-  
+
   authService = inject(AuthService);
   private router = inject(Router);
 
   isLoggedIn = this.authService.isLoggedIn;
+  isLoading = this.authService.isLoading;
   isAdmin = computed(() => this.authService.currentUser()?.role === 'Admin');
   currentUserName = computed(() => this.authService.currentUser()?.name);
 

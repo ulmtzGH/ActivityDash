@@ -1,7 +1,7 @@
 
 export interface ActivityLog {
   id: number;
-  userId: number;
+  userId: string;
   activityId: number;
   date: string;
   description?: string;

@@ -2,68 +2,143 @@
 import { Injectable, signal, computed, inject } from '@angular/core';
 import { Router } from '@angular/router';
 import { User } from '../models/user.model';
-import { DataService } from './data.service';
+import { DataService } from './data.service'; // Keep temporarily if other methods need it, but actually we removed it from usage.
+import { supabase } from '../app/supabase.client';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AuthService {
-  private dataService = inject(DataService);
   private router = inject(Router);
-  
+
   // Signal to hold the current user state. Initial value is null (logged out).
   currentUser = signal<User | null>(null);
+
+  // Signal to track loading state
+  private loading = signal(true);
+  isLoading = computed(() => this.loading());
 
   // Computed signal to easily check if a user is logged in.
   isLoggedIn = computed(() => this.currentUser() !== null);
 
-  constructor() { }
+  private initPromise: Promise<void>;
+  private initResolve!: () => void;
+  private currentProfilePromise: Promise<void> | null = null;
 
-  /**
-   * Attempts to log in a user with the given credentials.
-   * @param email The user's email.
-   * @param password The user's password.
-   * @returns True if login is successful, false otherwise.
-   */
-  login(email: string, password: string): boolean {
-    const user = this.dataService.users().find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    // User must exist, be active, and password must match
-    if (!user || !user.isActive || user.password !== password) {
-      return false; 
+  constructor() {
+    this.initPromise = new Promise((resolve) => {
+      this.initResolve = resolve;
+    });
+    this.initializeAuth();
+  }
+
+  async ensureInitialized() {
+    return this.initPromise;
+  }
+
+  private async initializeAuth() {
+    // Check initial session
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (session?.user) {
+      this.currentProfilePromise = this.fetchProfile(session.user.id, session.user.email!);
+      await this.currentProfilePromise;
     }
 
-    this.currentUser.set(user);
+    // Mark as initialized for the first time
+    this.loading.set(false);
+    this.initResolve();
+
+    // Listen for future auth changes
+    supabase.auth.onAuthStateChange(async (event, session) => {
+      if (session?.user) {
+        this.loading.set(true);
+        this.currentProfilePromise = this.fetchProfile(session.user.id, session.user.email!);
+        await this.currentProfilePromise;
+        this.loading.set(false);
+      } else {
+        this.currentUser.set(null);
+        this.currentProfilePromise = null;
+        this.loading.set(false);
+      }
+    });
+  }
+
+  private async fetchProfile(userId: string, email: string) {
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .single();
+
+    if (error) {
+      console.error('Error fetching profile:', error);
+      this.currentUser.set(null);
+      return;
+    }
+
+    if (profile) {
+      this.currentUser.set({
+        id: userId,
+        email: email,
+        name: profile.name,
+        role: profile.role as 'Admin' | 'Colaborador',
+        isActive: profile.is_active,
+        password: '' // Password not stored locally
+      });
+    }
+  }
+
+  async login(email: string, password: string): Promise<boolean> {
+    const { data, error } = await supabase.auth.signInWithPassword({
+      email,
+      password
+    });
+
+    if (error) {
+      console.error('Login error:', error.message);
+      return false;
+    }
+
+    // Explicitly fetch profile to ensure it's ready before navigation
+    if (data.user) {
+      await this.fetchProfile(data.user.id, data.user.email!);
+    }
+
     this.router.navigate(['/dashboard']);
     return true;
   }
 
-  /**
-   * Registers a new user, and then logs them in.
-   * @param name The user's full name.
-   * @param email The user's email.
-   * @param password The user's password.
-   * @returns An object indicating success and an optional error message.
-   */
-  register(name: string, email: string, password: string): { success: boolean, message?: string } {
-    const existingUser = this.dataService.users().find(u => u.email.toLowerCase() === email.toLowerCase());
-    
-    if (existingUser) {
-      return { success: false, message: 'El correo electrónico ya está en uso.' };
+  async register(name: string, email: string, password: string): Promise<{ success: boolean, message?: string }> {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+        }
+      }
+    });
+
+    if (error) {
+      return { success: false, message: error.message };
     }
 
-    this.dataService.addUser({ name, email, password });
+    if (data.user) {
+      // Profile is created automatically by database trigger 'on_auth_user_created'
+      // If auto-confirm is on, we might have a session immediately.
+      // We'll try to fetch profile just in case.
+      await this.fetchProfile(data.user.id, data.user.email!);
 
-    // Automatically log in the new user
-    this.login(email, password);
-    
-    return { success: true };
+      this.router.navigate(['/dashboard']);
+      return { success: true };
+    }
+
+    return { success: false, message: 'Error desconocido al registrar.' };
   }
 
-  /**
-   * Logs out the current user, clears the state, and redirects to the login page.
-   */
-  logout(): void {
+  async logout(): Promise<void> {
+    await supabase.auth.signOut();
     this.currentUser.set(null);
     this.router.navigate(['/login']);
   }
