@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "ng serve",
+    "prebuild": "tsx scripts/set-env.ts",
     "build": "ng build",
     "preview": "ng serve --configuration=production"
   },
@@ -24,6 +25,7 @@
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
+    "tsx": "^4.21.0",
     "typescript": "~5.9.0",
     "vite": "^6.2.0"
   }
